@@ -1,5 +1,3 @@
-import { Key } from 'ts-keycode-enum';
-
 export enum MoveType3By3 {
     FRONT = 0,
     SIDE = 1, // cuberotation
@@ -14,8 +12,24 @@ export enum MoveType3By3 {
     RIGHT = 8,
   };
 
+export enum MoveType2By2 {
+  FRONT = 0,
+  BACK = 1,
+  DOWN = 2,
+  UP = 3,
+  LEFT = 4,
+  RIGHT = 5,
+};
+
 export class Move {
-    constructor(public axis: THREE.Vector3, public angle: number, public keyCode: Key, public type: MoveType3By3) {
+  /**
+   * 
+   * @param axis The axis around which the move turns.
+   * @param angle The angle of turning. Always a factor of 90 degrees.
+   * @param moveCode Either the keycode of the keyboard, or the code of the move for larger cubes that don't have standard notation. See moveRotationInitializer.
+   * @param slice The bounding box encapsulating the group of cubies being moved by this move.
+   */
+    constructor(public axis: THREE.Vector3, public angle: number, public moveCode: number, public slice: THREE.Mesh) {
         
     }
 }

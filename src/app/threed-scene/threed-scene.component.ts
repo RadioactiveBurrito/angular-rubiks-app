@@ -5,6 +5,7 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 
 import { isPlatformBrowser } from '@angular/common';
 import { Rubiks } from '../../classes/rubiks';
+import { GenericMoveCodeToRotationBindingsInitializer, ThreeByThreeMoveCodeToRotationBindingsInitializer, TwoByTwoMoveCodeToRotationBindingsInitializer } from '../../classes/moveRotationInitializer';
 
 @Component({
   selector: 'app-threed-scene',
@@ -81,7 +82,7 @@ export class ThreedSceneComponent implements OnInit, OnChanges, OnDestroy {
       loader.load('/assets/CubieWithColors.fbx', (fbx) => {
           fbx.children.forEach(child => {
             if(child instanceof THREE.Mesh) {
-              this.rubiks = new Rubiks(child);
+              this.rubiks = new Rubiks(child, new GenericMoveCodeToRotationBindingsInitializer(), 5);
               this.rubiks.addToScene(this.scene);
             }
           });
