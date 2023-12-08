@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 
 import { isPlatformBrowser } from '@angular/common';
-import { Rubiks } from '../../classes/rubiks';
+import { IAnimate, Rubiks } from '../../classes/rubiks';
 import { GenericMoveCodeToRotationBindingsInitializer, ThreeByThreeMoveCodeToRotationBindingsInitializer, TwoByTwoMoveCodeToRotationBindingsInitializer } from '../../classes/moveRotationInitializer';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -24,6 +24,7 @@ export class ThreedSceneComponent implements OnInit, AfterViewInit, OnChanges, O
   camera!: THREE.PerspectiveCamera;
   isBrowser: boolean;
   rubiks!: Rubiks;
+  animateObjects: IAnimate[] = new Array<IAnimate>();
 
 
   @HostListener('document:keydown', ['$event'])
@@ -53,11 +54,6 @@ export class ThreedSceneComponent implements OnInit, AfterViewInit, OnChanges, O
 
   ngOnChanges(changes: SimpleChanges): void {
     //throw new Error('Method not implemented.');
-  }
-
-  animate(): void {
-    this.renderer.render(this.scene, this.camera);
-    requestAnimationFrame(this.animate.bind(this));
   }
 
   ngAfterViewInit(): void {
@@ -91,10 +87,17 @@ export class ThreedSceneComponent implements OnInit, AfterViewInit, OnChanges, O
               if(child instanceof THREE.Mesh) {
                 this.rubiks = new Rubiks(child, new GenericMoveCodeToRotationBindingsInitializer(), 2);
                 this.rubiks.addToScene(this.scene);
+                this.animateObjects.push(this.rubiks);
               }
             });
 
-            this.ngZone.runOutsideAngular(() => this.animate());
+            this.ngZone.runOutsideAngular(() => {
+              this.renderer.setAnimationLoop(() => {
+                // render a frame
+                this.animateObjects.forEach((animateObject) => animateObject.doAnimationFrame());
+                this.renderer.render(this.scene, this.camera);
+              });
+            });
         });}, 500);
       };
   }

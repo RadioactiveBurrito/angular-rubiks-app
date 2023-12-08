@@ -2,26 +2,52 @@ import * as THREE from 'three';
 import { Move } from '../classes/move';
 import { IMoveCodeToRotationBindingsInitializer, ThreeByThreeMoveCodeToRotationBindingsInitializer } from './moveRotationInitializer';
 import { ISolvable, CubieState } from './solver';
+import { ThreedSceneComponent } from '../app/threed-scene/threed-scene.component';
 
 export interface IMovable {
-  doMove(move: Move): void;
-}
+  doMove(move: Move, animated: boolean, animationDelayMs: number): void;
+};
 
-export class Rubiks implements ISolvable, IMovable {
+export interface IAnimate {
+  doAnimationFrame(): void;
+};
+
+export class Rubiks implements ISolvable, IMovable, IAnimate {
     private moveCodeToRotation!: Map<number, Move>;
     private moveToRotationInitializer!: IMoveCodeToRotationBindingsInitializer;
     private elementsInScene: THREE.Group = new THREE.Group();
     private cubies = new Array<THREE.Mesh>();
     private initialState = new Array<CubieState>();
 
-    cubeSideLength: number = 0;
-    cubieLength: number = 0;
-    cubieSpacingFactor: number = 2.5;
+    private cubeSideLength: number = 0;
+    private cubieLength: number = 0;
+    private cubieSpacingFactor: number = 2.5;
+
+    private isTurning: boolean = false;
+    private currentAngle: number = 0;
+    private axisTurn: THREE.Vector3 = new THREE.Vector3();
+    private targetAngle: number = 0;
+    private cubieIndicesInAnimation = new Array<number>();
+    private counter: number = 0;
 
     constructor(private cubieMesh: THREE.Mesh, moveToRotationInitializer: IMoveCodeToRotationBindingsInitializer = new ThreeByThreeMoveCodeToRotationBindingsInitializer(), public size: number = 3) {
         this.cubieLength = cubieMesh.scale.x/4; // magic number based on the cubie mesh model
         this.moveToRotationInitializer = moveToRotationInitializer;
         this.cubeSideLength = (size - 1) * this.cubieLength * this.cubieSpacingFactor;
+    }
+
+    public doAnimationFrame(): void {
+      if(this.isTurning) {
+        // todo
+        if(this.counter++ == 4) {// magic number TO REMOVE - FIGURE OUT WHY ROTATION EXCEEDS WHEN DOING THIS
+          this.isTurning = false;
+          return;
+          // todo: snap to exactly target angle
+        }
+
+        this.currentAngle += this.targetAngle/10;
+        this.doRotationOnAnimatedCubies(this.axisTurn, this.currentAngle);
+      }
     }
 
     public getNbPossibleMoves(): number {
@@ -50,15 +76,18 @@ export class Rubiks implements ISolvable, IMovable {
     }
 
     public handleKeyDownEvent(keyDownEvent: KeyboardEvent) {
-      // todo: better this part
+      // todo: better this method
       this.moveCodeToRotation.forEach((move, key) => {
         if(move.moveCode == keyDownEvent.keyCode) {
-          this.doMove(move);
+          if(!this.isTurning) {
+            this.isTurning = true;
+            this.doMove(move, true, 1);// todo: animation delay
+          }
         }
       });
     }
   
-    public doMove(move: Move) {
+  public doMove(move: Move, animated: boolean = false, animationDelayMs: number = 1) {
       const slice = move.slice; // copy slice in the move instead of the type?
       const axis = move.axis;
       const angle = move.angle;
@@ -77,19 +106,32 @@ export class Rubiks implements ISolvable, IMovable {
       const boundingBox = new THREE.Box3(minCorner, maxCorner);
   
       // Get the indices of instances overlapping with the bounding box
-      const instancesInSlice: number[] = this.findInstancesInBoundingBox(boundingBox);
+      this.cubieIndicesInAnimation = this.findInstancesInBoundingBox(boundingBox); // todo: prevent creation of array
   
+      if(!animated) {
+        this.doRotationOnAnimatedCubies(axis, angle);
+      } 
+      else {
+        this.targetAngle = angle;
+        this.counter = 0;
+        this.currentAngle = 0;
+        this.axisTurn = axis;
+        this.isTurning = true;
+      }
+    }
+
+    private doRotationOnAnimatedCubies(axis: THREE.Vector3, angle: number) {
       let group = new THREE.Group();
   
-      instancesInSlice.forEach((instanceIndex) => {
+      this.cubieIndicesInAnimation.forEach((instanceIndex) => {
         group.add(this.cubies[instanceIndex]);
       });
-  
+
       group.rotateOnWorldAxis(axis, angle);
-  
+    
       let tempQuaternion = new THREE.Quaternion();
       let tempPosition = new THREE.Vector3();
-      instancesInSlice.forEach((instanceIndex) => {
+      this.cubieIndicesInAnimation.forEach((instanceIndex) => {
         // Read world rotations before removal
         this.cubies[instanceIndex].getWorldQuaternion(tempQuaternion);
         this.cubies[instanceIndex].getWorldPosition(tempPosition);
@@ -175,7 +217,6 @@ export class Rubiks implements ISolvable, IMovable {
               new THREE.BoxGeometry(1, 1, 1).center(),
               new THREE.MeshBasicMaterial({ color: 0xff0000, visible: false}) // red color to debug when visible is true,
             );
-            console.log('caca');
     
             const slicePosition = positionSelector[i].clone().multiplyScalar(coord * this.cubieLength * this.cubieSpacingFactor);
             cubeSlice.position.copy(slicePosition);

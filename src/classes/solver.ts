@@ -31,14 +31,15 @@ export class CubieState {
 export class StandardSolutionExecuter implements ISolutionExecuter {
     public execute(moves: Move[], rubiksCube: IMovable): void {
         moves.forEach((move: Move) => {
-            setTimeout(() => {
-                rubiksCube.doMove(move);
-            }, 1000);
+            rubiksCube.doMove(move, false, 1000);
         });
     }
 }
 
 export class NaiveTwoByTwoRubiksSolver implements IRubiksSolver {
+    public buildMoveStateMapping(): any {
+        // 
+    }
 
     // implement breadth first search
     public solve(rubiksCube: ISolvable): Move[] {
@@ -56,6 +57,7 @@ export class NaiveTwoByTwoRubiksSolver implements IRubiksSolver {
 
             // if not, just carry on, nothing to see :-)
             for (let i = 0; i < rubiksCube.getNbPossibleMoves(); ++i) {
+                // to move between cube states, make a lookup table that is saved to disk.
                 queue.enqueue(current.concat([ i ]));
             }
 
