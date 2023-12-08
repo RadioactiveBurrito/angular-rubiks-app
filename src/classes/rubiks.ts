@@ -1,30 +1,112 @@
 import * as THREE from 'three';
-import { Move, MoveType3By3 } from '../classes/move';
-import { Key } from 'ts-keycode-enum';
+import { Move } from '../classes/move';
 import { IMoveCodeToRotationBindingsInitializer, ThreeByThreeMoveCodeToRotationBindingsInitializer } from './moveRotationInitializer';
+import { ISolvable, CubieState } from './solver';
 
-export class Rubiks {
+export interface IMovable {
+  doMove(move: Move): void;
+}
 
-    moveToRotation!: Map<number, Move>;
-    moveToRotationInitializer!: IMoveCodeToRotationBindingsInitializer;
-    elementsInScene: THREE.Group = new THREE.Group();
-    moves!: Move[];
-    cubies = new Array<THREE.Mesh>();
+export class Rubiks implements ISolvable, IMovable {
+    private moveCodeToRotation!: Map<number, Move>;
+    private moveToRotationInitializer!: IMoveCodeToRotationBindingsInitializer;
+    private elementsInScene: THREE.Group = new THREE.Group();
+    private cubies = new Array<THREE.Mesh>();
+    private initialState = new Array<CubieState>();
 
     cubeSideLength: number = 0;
     cubieLength: number = 0;
     cubieSpacingFactor: number = 2.5;
 
     constructor(private cubieMesh: THREE.Mesh, moveToRotationInitializer: IMoveCodeToRotationBindingsInitializer = new ThreeByThreeMoveCodeToRotationBindingsInitializer(), public size: number = 3) {
-        this.cubieLength = cubieMesh.scale.x/4;
+        this.cubieLength = cubieMesh.scale.x/4; // magic number based on the cubie mesh model
         this.moveToRotationInitializer = moveToRotationInitializer;
-        this.cubeSideLength = (size - 1) * this.cubieLength;
+        this.cubeSideLength = (size - 1) * this.cubieLength * this.cubieSpacingFactor;
+    }
+
+    public getNbPossibleMoves(): number {
+      return this.moveCodeToRotation.size;
+    }
+
+    public getInitialState(): CubieState[] {
+      return this.initialState;
+    }
+
+    public getCurrentState(): CubieState[] {
+      let currentState = new Array<CubieState>();
+      
+      this.cubies.forEach((cubie) => {
+        const initialState = new THREE.Vector3().fromArray(cubie.name.split(',').map(Number));
+        currentState.push(new CubieState(cubie.position, initialState));
+      });
+
+      return currentState;
+    }
+
+    public addToScene(scene: THREE.Scene) {
+      this.initializeVisualCubeLayout();
+      this.initializeMoves(this.moveToRotationInitializer);
+      scene.add(this.elementsInScene);
+    }
+
+    public handleKeyDownEvent(keyDownEvent: KeyboardEvent) {
+      // todo: better this part
+      this.moveCodeToRotation.forEach((move, key) => {
+        if(move.moveCode == keyDownEvent.keyCode) {
+          this.doMove(move);
+        }
+      });
+    }
+  
+    public doMove(move: Move) {
+      const slice = move.slice; // copy slice in the move instead of the type?
+      const axis = move.axis;
+      const angle = move.angle;
+  
+      // Get the position and scaled box extent of the slice
+      const boxLocation = new THREE.Vector3();
+      const boxExtents = new THREE.Vector3();
+      slice.getWorldPosition(boxLocation);
+      slice.getWorldScale(boxExtents);
+  
+      // Calculate the minimum and maximum corners of the bounding box
+      const minCorner = new THREE.Vector3().subVectors(boxLocation, boxExtents);
+      const maxCorner = new THREE.Vector3().addVectors(boxLocation, boxExtents);
+  
+      // Create a Box3 from the calculated corners
+      const boundingBox = new THREE.Box3(minCorner, maxCorner);
+  
+      // Get the indices of instances overlapping with the bounding box
+      const instancesInSlice: number[] = this.findInstancesInBoundingBox(boundingBox);
+  
+      let group = new THREE.Group();
+  
+      instancesInSlice.forEach((instanceIndex) => {
+        group.add(this.cubies[instanceIndex]);
+      });
+  
+      group.rotateOnWorldAxis(axis, angle);
+  
+      let tempQuaternion = new THREE.Quaternion();
+      let tempPosition = new THREE.Vector3();
+      instancesInSlice.forEach((instanceIndex) => {
+        // Read world rotations before removal
+        this.cubies[instanceIndex].getWorldQuaternion(tempQuaternion);
+        this.cubies[instanceIndex].getWorldPosition(tempPosition);
+  
+        // Take the cube out of the rotation group, place into the rubiks object group.
+        this.elementsInScene.add(this.cubies[instanceIndex]);
+  
+        // Now we re-apply the world rotations to the cube
+        this.cubies[instanceIndex].quaternion.copy(tempQuaternion);
+        this.cubies[instanceIndex].position.copy(tempPosition);
+      });
     }
 
     private initializeVisualCubeLayout() {
         const maxCoord = (this.size - 1) / 2;
         const minCoord = -maxCoord;
-    
+
         for (let x = minCoord; x <= maxCoord; ++x) {
           for (let y = minCoord; y <= maxCoord; ++y) {
             for (let z = minCoord; z <= maxCoord; ++z) {
@@ -39,6 +121,11 @@ export class Rubiks {
                 cubie.position.copy(cubiePosition);
                 cubie.scale.set(this.cubieLength, this.cubieLength, this.cubieLength);
                 cubie.matrixAutoUpdate = true;
+
+                // use the cubie name as the identifier
+                cubie.name = cubiePosition.toArray().toString();
+                this.initialState.push(new CubieState(cubiePosition, cubiePosition));
+
                 this.cubies.push(cubie);
                 this.elementsInScene.add(cubie);
               }
@@ -65,66 +152,6 @@ export class Rubiks {
         }
     
         return instancesInSlice;
-      }
-    
-      public addToScene(scene: THREE.Scene) {
-        this.initializeVisualCubeLayout();
-        this.initializeMoves(this.moveToRotationInitializer);
-        scene.add(this.elementsInScene);
-      }
-
-      public handleKeyDownEvent(keyDownEvent: KeyboardEvent) {
-        // todo: better this part
-        this.moveToRotation.forEach((move, key) => {
-          if(move.moveCode == keyDownEvent.keyCode) {
-            this.doMove(move);
-          }
-        });
-      }
-    
-      public doMove(move: Move) {
-        const slice = move.slice; // copy slice in the move instead of the type?
-        const axis = move.axis;
-        const angle = move.angle;
-    
-        // Get the position and scaled box extent of the slice
-        const boxLocation = new THREE.Vector3();
-        const boxExtents = new THREE.Vector3();
-        slice.getWorldPosition(boxLocation);
-        slice.getWorldScale(boxExtents);
-    
-        // Calculate the minimum and maximum corners of the bounding box
-        const minCorner = new THREE.Vector3().subVectors(boxLocation, boxExtents);
-        const maxCorner = new THREE.Vector3().addVectors(boxLocation, boxExtents);
-    
-        // Create a Box3 from the calculated corners
-        const boundingBox = new THREE.Box3(minCorner, maxCorner);
-    
-        // Get the indices of instances overlapping with the bounding box
-        const instancesInSlice: number[] = this.findInstancesInBoundingBox(boundingBox);
-    
-        let group = new THREE.Group();
-    
-        instancesInSlice.forEach((instanceIndex) => {
-          group.add(this.cubies[instanceIndex]);
-        });
-    
-        group.rotateOnWorldAxis(axis, angle);
-    
-        let tempQuaternion = new THREE.Quaternion();
-        let tempPosition = new THREE.Vector3();
-        instancesInSlice.forEach((instanceIndex) => {
-          // Read world rotations before removal
-          this.cubies[instanceIndex].getWorldQuaternion(tempQuaternion);
-          this.cubies[instanceIndex].getWorldPosition(tempPosition);
-    
-          // Take the cube out of the rotation group, place into the rubiks object group.
-          this.elementsInScene.add(this.cubies[instanceIndex]);
-    
-          // Now we re-apply the world rotations to the cube
-          this.cubies[instanceIndex].quaternion.copy(tempQuaternion);
-          this.cubies[instanceIndex].position.copy(tempPosition);
-        });
       }
     
       private initializeMoves(moveToRotationInitializer: IMoveCodeToRotationBindingsInitializer) {
@@ -162,7 +189,7 @@ export class Rubiks {
           }
         }
 
-        this.moveToRotation = moveToRotationInitializer.initializeMoveCodeToRotationBindings(cubeSlices);
+        this.moveCodeToRotation = moveToRotationInitializer.initializeMoveCodeToRotationBindings(cubeSlices);
       }
     
       private isValidCubie(x: number, y: number, z: number, minCoord: number, maxCoord: number): boolean {

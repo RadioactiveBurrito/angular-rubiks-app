@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 import { ThreedSceneComponent } from './threed-scene/threed-scene.component';
 
 
+
 @Component({
   selector: 'app-root',
   standalone: true,

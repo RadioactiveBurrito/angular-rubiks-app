@@ -1,0 +1,10 @@
+TODO
+
+-Cube turning animations
+-materials
+-sound when turning
+-Aesthetics: fill gaps as in a real world cube
+-Allow control of slices with the mouse
+-Let the use change the size of the cube from the UI
+-Generic cube representation in memory
+-2x2x2 solving algorithm - brain dead method

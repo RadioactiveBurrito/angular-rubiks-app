@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, OnDestroy, SimpleChanges, Inject, NgZone, PLATFORM_ID, HostListener } from '@angular/core';
+import { Component, OnInit, OnChanges, OnDestroy, SimpleChanges, Inject, NgZone, PLATFORM_ID, HostListener, AfterViewInit } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
@@ -6,17 +6,19 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { isPlatformBrowser } from '@angular/common';
 import { Rubiks } from '../../classes/rubiks';
 import { GenericMoveCodeToRotationBindingsInitializer, ThreeByThreeMoveCodeToRotationBindingsInitializer, TwoByTwoMoveCodeToRotationBindingsInitializer } from '../../classes/moveRotationInitializer';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
 
 @Component({
   selector: 'app-threed-scene',
   standalone: true,
-  imports: [],
+  imports: [MatInputModule, MatFormFieldModule],
   templateUrl: './threed-scene.component.html',
   host: {ngSkipHydration: 'true'},
   styleUrl: './threed-scene.component.css'
 })
-export class ThreedSceneComponent implements OnInit, OnChanges, OnDestroy {
-  
+export class ThreedSceneComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy {
+
   scene: THREE.Scene = new THREE.Scene();
   renderer!: THREE.WebGLRenderer;
   camera!: THREE.PerspectiveCamera;
@@ -58,7 +60,7 @@ export class ThreedSceneComponent implements OnInit, OnChanges, OnDestroy {
     requestAnimationFrame(this.animate.bind(this));
   }
 
-  ngOnInit(): void {
+  ngAfterViewInit(): void {
     if(this.isBrowser) {
       this.scene.background = new THREE.Color(0x0);
 
@@ -71,24 +73,33 @@ export class ThreedSceneComponent implements OnInit, OnChanges, OnDestroy {
       let hlight = new THREE.AmbientLight (0x404040, 50);
       this.scene.add(hlight);
 
-      this.renderer = new THREE.WebGLRenderer({antialias:true});
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(this.renderer.domElement);
+      setTimeout(() => {
+        let canvas = document.querySelector("#scene");
+        this.renderer = new THREE.WebGLRenderer({
+          antialias:true,
+          canvas: canvas!,
+        });
 
-      let controls = new OrbitControls(this.camera, this.renderer.domElement);
-      controls.addEventListener('change', () => this.renderer.render(this.scene, this.camera));
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(devicePixelRatio);
+        let controls = new OrbitControls(this.camera, this.renderer.domElement);
+        controls.addEventListener('change', () => this.renderer.render(this.scene, this.camera));
 
-      let loader = new FBXLoader();
-      loader.load('/assets/CubieWithColors.fbx', (fbx) => {
-          fbx.children.forEach(child => {
-            if(child instanceof THREE.Mesh) {
-              this.rubiks = new Rubiks(child, new GenericMoveCodeToRotationBindingsInitializer(), 5);
-              this.rubiks.addToScene(this.scene);
-            }
-          });
+        let loader = new FBXLoader();
+        loader.load('/assets/CubieWithColors.fbx', (fbx) => {
+            fbx.children.forEach(child => {
+              if(child instanceof THREE.Mesh) {
+                this.rubiks = new Rubiks(child, new GenericMoveCodeToRotationBindingsInitializer(), 2);
+                this.rubiks.addToScene(this.scene);
+              }
+            });
 
-          this.ngZone.runOutsideAngular(() => this.animate());
-      });
-    }
+            this.ngZone.runOutsideAngular(() => this.animate());
+        });}, 500);
+      };
+  }
+
+  ngOnInit(): void {
+
   }
 }
