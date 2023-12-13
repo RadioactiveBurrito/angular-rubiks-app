@@ -1,6 +1,6 @@
 TODO
 
--Cube turning animations
+-Cube turning animations - done ish
 -materials
 -sound when turning
 -Aesthetics: fill gaps as in a real world cube

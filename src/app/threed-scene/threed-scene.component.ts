@@ -8,6 +8,8 @@ import { IAnimate, Rubiks } from '../../classes/rubiks';
 import { GenericMoveCodeToRotationBindingsInitializer, ThreeByThreeMoveCodeToRotationBindingsInitializer, TwoByTwoMoveCodeToRotationBindingsInitializer } from '../../classes/moveRotationInitializer';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { NaiveTwoByTwoRubiksSolver, StandardSolutionExecuter } from '../../classes/solver';
+import { Move } from '../../classes/move';
 
 @Component({
   selector: 'app-threed-scene',
@@ -30,6 +32,18 @@ export class ThreedSceneComponent implements OnInit, AfterViewInit, OnChanges, O
   @HostListener('document:keydown', ['$event'])
   handleKeyDown(keyDownEvent: KeyboardEvent) {
     this.rubiks.handleKeyDownEvent(keyDownEvent);
+  }
+
+  @HostListener('document:mousedown', ['$event'])
+  handleOnMouseDown(mouseDown: MouseEvent) {
+    const solver = new NaiveTwoByTwoRubiksSolver();
+    const solution = solver.solve(this.rubiks);
+    const solutionMoves = new Array<Move>();
+    solution.forEach((moveCode) => {
+      solutionMoves.push(this.rubiks.getMove(moveCode));
+    });
+    const executer = new StandardSolutionExecuter();
+    executer.execute(solutionMoves, this.rubiks);
   }
 
   @HostListener('window:resize', ['$event'])

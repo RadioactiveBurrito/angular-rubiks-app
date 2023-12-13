@@ -46,13 +46,14 @@ export class TwoByTwoMoveCodeToRotationBindingsInitializer implements IMoveCodeT
 export class GenericMoveCodeToRotationBindingsInitializer implements IMoveCodeToRotationBindingsInitializer {
     initializeMoveCodeToRotationBindings(cubeSlices: THREE.Mesh<THREE.BufferGeometry<THREE.NormalBufferAttributes>, THREE.Material | THREE.Material[], THREE.Object3DEventMap>[]): Map<number, Move> {
         let moveCodeToRotationBinding = new Map<number, Move>();
-        cubeSlices.forEach((slice, index) => {
+        var index = 0;
+        cubeSlices.forEach((slice, count) => {
             let axis: THREE.Vector3;
 
-            if(index >= 2*cubeSlices.length/3.0) {
+            if(count >= 2*cubeSlices.length/3.0) {
                 axis = new THREE.Vector3(0, 0, 1);
             }
-            else if(index >= cubeSlices.length/3.0) {
+            else if(count >= cubeSlices.length/3.0) {
                 axis = new THREE.Vector3(0, 1, 0);
             }
             else {
@@ -60,6 +61,11 @@ export class GenericMoveCodeToRotationBindingsInitializer implements IMoveCodeTo
             }
 
             moveCodeToRotationBinding.set(index + Key.A, new Move(axis, Math.PI/2, index + Key.A, slice));
+            ++index;
+            moveCodeToRotationBinding.set(index + Key.A, new Move(axis, -Math.PI/2, index + Key.A, slice));
+            ++index;
+            moveCodeToRotationBinding.set(index + Key.A, new Move(axis, Math.PI, index + Key.A, slice));
+            ++index;
         });
         return moveCodeToRotationBinding;
     }
