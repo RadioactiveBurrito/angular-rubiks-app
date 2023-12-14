@@ -62,7 +62,7 @@ export class GenericMoveCodeToRotationBindingsInitializer implements IMoveCodeTo
 
             moveCodeToRotationBinding.set(index + Key.A, new Move(axis, Math.PI/2, index + Key.A, slice));
             ++index;
-            moveCodeToRotationBinding.set(index + Key.A, new Move(axis, -Math.PI/2, index + Key.A, slice));
+            moveCodeToRotationBinding.set(index + Key.A, new Move(axis, 3*Math.PI/2, index + Key.A, slice));
             ++index;
             moveCodeToRotationBinding.set(index + Key.A, new Move(axis, Math.PI, index + Key.A, slice));
             ++index;

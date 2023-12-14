@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { NaiveTwoByTwoRubiksSolver, StandardSolutionExecuter } from '../../classes/solver';
 import { Move } from '../../classes/move';
+import { Key } from 'ts-keycode-enum';
 
 @Component({
   selector: 'app-threed-scene',
@@ -31,19 +32,18 @@ export class ThreedSceneComponent implements OnInit, AfterViewInit, OnChanges, O
 
   @HostListener('document:keydown', ['$event'])
   handleKeyDown(keyDownEvent: KeyboardEvent) {
-    this.rubiks.handleKeyDownEvent(keyDownEvent);
-  }
-
-  @HostListener('document:mousedown', ['$event'])
-  handleOnMouseDown(mouseDown: MouseEvent) {
-    const solver = new NaiveTwoByTwoRubiksSolver();
-    const solution = solver.solve(this.rubiks);
-    const solutionMoves = new Array<Move>();
-    solution.forEach((moveCode) => {
-      solutionMoves.push(this.rubiks.getMove(moveCode));
-    });
-    const executer = new StandardSolutionExecuter();
-    executer.execute(solutionMoves, this.rubiks);
+    if(Key.Enter == keyDownEvent.keyCode) {
+      const solver = new NaiveTwoByTwoRubiksSolver();
+      const solution = solver.solve(this.rubiks);
+      const solutionMoves = new Array<Move>();
+      solution.forEach((moveCode) => {
+        solutionMoves.push(this.rubiks.getMove(moveCode));
+      });
+      const executer = new StandardSolutionExecuter();
+      executer.execute(solutionMoves, this.rubiks);
+    } else {
+      this.rubiks.handleKeyDownEvent(keyDownEvent);
+    }
   }
 
   @HostListener('window:resize', ['$event'])
@@ -75,9 +75,9 @@ export class ThreedSceneComponent implements OnInit, AfterViewInit, OnChanges, O
       this.scene.background = new THREE.Color(0x0);
 
       this.camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 10000);
-      this.camera.position.x = -500;
+      this.camera.position.x = 0;
       this.camera.position.y = 250;
-      this.camera.position.z = 0;
+      this.camera.position.z = 500;
       this.camera.rotation.set(-Math.PI / 4, 0, 0);
 
       let hlight = new THREE.AmbientLight (0x404040, 50);

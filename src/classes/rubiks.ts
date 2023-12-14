@@ -4,6 +4,7 @@ import { IMoveCodeToRotationBindingsInitializer, ThreeByThreeMoveCodeToRotationB
 import { ISolvable, CubieState } from './solver';
 import { ThreedSceneComponent } from '../app/threed-scene/threed-scene.component';
 import { vector3ToString, stringToVector3 } from './threeUtils';
+import { Key } from 'ts-keycode-enum';
 
 export interface IMovable {
   doMove(move: Move, animated: boolean, animationDelayMs: number): void;
@@ -19,7 +20,6 @@ export class Rubiks implements ISolvable, IMovable, IAnimate {
     private elementsInScene: THREE.Group = new THREE.Group();
     private cubies = new Array<THREE.Mesh>();
     private cracks = new Array<THREE.Mesh>(); // cosmetic boxes in cracks of the cube. Will turn as of the current design (don't turn them later on...)
-    private initialState = new Array<CubieState>();
 
     private cubeSideLength: number = 0;
     private cubieLength: number = 0;
@@ -53,15 +53,20 @@ export class Rubiks implements ISolvable, IMovable, IAnimate {
       const moveDisplacementMappings = new Map<number, Map<string, string>>();
       
       this.moveCodeToMove.forEach((move: Move) => {
+        var beforeMoveStates = this.getCurrentState().sort(
+          (a,b) => a.initialState.localeCompare(b.initialState));
         this.doMove(move);
-        const afterMoveStates = this.getCurrentState().sort(
+        var afterMoveStates = this.getCurrentState().sort(
           (a,b) => a.initialState.localeCompare(b.initialState)); // not sure about this trick to get the array sorted;
         this.doMoveInverse(move); // put back in initial state
 
-        const cubieStateToCubieState = new Map<string, string>();
-        afterMoveStates.forEach((cubieState) => {
-          cubieStateToCubieState.set(cubieState.initialState, cubieState.currentState);
-        });
+        var cubieStateToCubieState = new Map<string, string>();
+        for(let i = 0; i < afterMoveStates.length; ++i) {
+          if(afterMoveStates[i].initialState !== beforeMoveStates[i].initialState) {
+            throw new Error(afterMoveStates[i].initialState + beforeMoveStates[i].initialState);
+          }
+          cubieStateToCubieState.set(beforeMoveStates[i].currentState, afterMoveStates[i].currentState);
+        }
 
         moveDisplacementMappings.set(move.moveCode, cubieStateToCubieState);
       });
@@ -90,13 +95,9 @@ export class Rubiks implements ISolvable, IMovable, IAnimate {
       return this.moveCodeToMove.size;
     }
 
-    public getInitialState(): CubieState[] {
-      return this.initialState;
-    }
-
     public getCurrentState(): CubieState[] {
       let currentState = new Array<CubieState>();
-      
+
       this.cubies.forEach((cubie) => {
         currentState.push(new CubieState(vector3ToString(cubie.position), cubie.name));
       });
@@ -123,7 +124,15 @@ export class Rubiks implements ISolvable, IMovable, IAnimate {
     }
   
   public doMoveInverse(move: Move) {
-    this.doMove(move.inverse());
+    if((move.moveCode - Key.A) % 3 == 0) {
+      this.doMove(this.moveCodeToMove.get(move.moveCode + 1)!);
+    }
+    else if((move.moveCode - Key.A) % 3 == 1) {
+      this.doMove(this.moveCodeToMove.get(move.moveCode - 1)!);
+    } 
+    else {
+      this.doMove(move);
+    }
   }
 
   public doMove(move: Move, animated: boolean = false, animationDelayMs: number = 1) {
@@ -170,15 +179,9 @@ export class Rubiks implements ISolvable, IMovable, IAnimate {
         group.add(this.cubies[instanceIndex]);
       });
 
-      if(angle < Math.PI) {
-        group.rotateOnWorldAxis(axis, angle);
-      } 
-      else {
-        var rotationQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+      var rotationQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle);
 
-        // Apply the rotation to the object
-        group.setRotationFromQuaternion(rotationQuaternion);        
-      }
+      group.setRotationFromQuaternion(rotationQuaternion);        
     
       let tempQuaternion = new THREE.Quaternion();
       let tempPosition = new THREE.Vector3();
@@ -232,8 +235,6 @@ export class Rubiks implements ISolvable, IMovable, IAnimate {
                 cubie.position.z = Number(cubie.position.z.toFixed(2));
                 cubie.name = cubiePosition.toArray().toString();
 
-                this.initialState.push(new CubieState(vector3ToString(cubiePosition), vector3ToString(cubiePosition)));
-
                 this.cubies.push(cubie);
                 this.elementsInScene.add(cubie);
               }
@@ -247,12 +248,6 @@ export class Rubiks implements ISolvable, IMovable, IAnimate {
     
         // Iterate over all instances and check if they overlap with the bounding box
         for (let instanceIndex = 0; instanceIndex < this.cubies.length; instanceIndex++) {
-          const instanceMatrix = this.cubies[instanceIndex].matrix;
-    
-          // Get the position of the instance
-          const instancePosition = new THREE.Vector3();
-          instanceMatrix.decompose(instancePosition, new THREE.Quaternion(), new THREE.Vector3());
-    
           // Check if the instance position is within the bounding box
           if (boundingBox.intersectsBox(new THREE.Box3().setFromObject(this.cubies[instanceIndex]))) { // todo keep colliding boxes
             instancesInSlice.push(instanceIndex);

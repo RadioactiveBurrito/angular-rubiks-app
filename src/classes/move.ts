@@ -31,8 +31,4 @@ export class Move {
    */
     constructor(public axis: THREE.Vector3, public angle: number, public moveCode: number, public slice: THREE.Mesh) {
     }
-
-    public inverse(): Move {
-      return new Move(this.axis, -this.angle, this.moveCode, this.slice);
-    }
 }

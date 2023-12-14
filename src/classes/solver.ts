@@ -14,7 +14,6 @@ export interface ISolutionExecuter {
 }
 
 export interface ISolvable {
-    getInitialState(): CubieState[]; 
     getCurrentState(): CubieState[];
     getNbPossibleMoves(): number;
     // For a moveCode, cubie state A goes to cubie state B
@@ -61,18 +60,18 @@ export class NaiveTwoByTwoRubiksSolver implements IRubiksSolver {
         {
             current = queue.dequeue();
 
-            // see if current is in the solved state
-            if(this.isSolved(current)) {
-                return current.movesDone;
-            }
-
             // if not, just carry on, nothing to see :-)
             for (let currentMove = Key.A; currentMove < rubiksCube.getNbPossibleMoves() + Key.A; ++currentMove) {
                 if(this.skipBecauseInverseMoveCameBefore(current.movesDone, currentMove)) {
                     continue;
                 }
 
-                queue.enqueue(this.buildNextCubieStatesBasedOnMoveApplied(rubiksCube.getCurrentState(), currentMove, moveDisplacementMappings.get(currentMove)!, current.movesDone)); // TODO: FIX + KEY.A
+                var state = this.buildNextCubieStatesBasedOnMoveApplied(current.cubieStates, currentMove, moveDisplacementMappings.get(currentMove)!, current.movesDone);
+                if(this.isSolved(state)) {
+                    return state.movesDone;
+                }
+
+                queue.enqueue(state);
             }
 
             
@@ -81,28 +80,28 @@ export class NaiveTwoByTwoRubiksSolver implements IRubiksSolver {
         throw new Error("Impossible!");
     }
 
-    private skipBecauseInverseMoveCameBefore(movesDone: Array<number>, currentMove: number): boolean {
+    private skipBecauseInverseMoveCameBefore(movesDone: Array<number>, currentMoveCode: number): boolean {
         if(movesDone.length == 0) {
             return false;
         }
 
-        if(this.isStandardMove(currentMove)) {
-            return movesDone[movesDone.length - 1] == currentMove + 1; // currentMove + 1 is inverse move
+        if(this.isStandardMove(currentMoveCode - Key.A)) {
+            return movesDone[movesDone.length - 1] == currentMoveCode + 1; // currentMove + 1 is inverse move
         }
-        else if(this.isInverseMove(currentMove)) {
-            return movesDone[movesDone.length - 1] == currentMove - 1; // currentMove - 1 is standard move
+        else if(this.isInverseMove(currentMoveCode - Key.A)) {
+            return movesDone[movesDone.length - 1] == currentMoveCode - 1; // currentMove - 1 is standard move
         } 
         else { //double move
-            return movesDone[movesDone.length - 1] == currentMove;
+            return movesDone[movesDone.length - 1] == currentMoveCode;
         }
     }
 
-    private isStandardMove(move: number): boolean {
-        return move % 3 == 0;
+    private isStandardMove(moveIndex: number): boolean {
+        return moveIndex % 3 == 0;
     }
 
-    private isInverseMove(move: number): boolean {
-        return move % 2 == 0;
+    private isInverseMove(moveIndex: number): boolean {
+        return moveIndex % 3 == 1;
     }
 
     private buildNextCubieStatesBasedOnMoveApplied(currentCubieStates: CubieState[], moveCode: number,
