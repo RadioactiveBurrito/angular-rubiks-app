@@ -33,9 +33,7 @@ export class CubieState {
 
 export class StandardSolutionExecuter implements ISolutionExecuter {
     public execute(moves: Move[], rubiksCube: IMovable): void {
-        moves.forEach((move: Move) => {
-            rubiksCube.doMove(move, false, 1000);
-        });
+        rubiksCube.doMoves(moves, true, 250);
     }
 }
 

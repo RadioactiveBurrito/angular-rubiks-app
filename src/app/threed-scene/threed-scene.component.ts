@@ -12,6 +12,8 @@ import { NaiveTwoByTwoRubiksSolver, StandardSolutionExecuter } from '../../class
 import { Move } from '../../classes/move';
 import { Key } from 'ts-keycode-enum';
 
+import * as TWEEN from '@tweenjs/tween.js'
+
 @Component({
   selector: 'app-threed-scene',
   standalone: true,
@@ -27,7 +29,7 @@ export class ThreedSceneComponent implements OnInit, AfterViewInit, OnChanges, O
   camera!: THREE.PerspectiveCamera;
   isBrowser: boolean;
   rubiks!: Rubiks;
-  animateObjects: IAnimate[] = new Array<IAnimate>();
+  //animateObjects: IAnimate[] = new Array<IAnimate>();
 
 
   @HostListener('document:keydown', ['$event'])
@@ -73,6 +75,14 @@ export class ThreedSceneComponent implements OnInit, AfterViewInit, OnChanges, O
   ngAfterViewInit(): void {
     if(this.isBrowser) {
       this.scene.background = new THREE.Color(0x0);
+      this.scene.add(new THREE.AxesHelper(8));
+
+      // tweenjs for animations
+      const animate = (t: number | undefined) => {
+        TWEEN.update(t);
+        window.requestAnimationFrame(animate);
+      };
+      animate(undefined);
 
       this.camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 10000);
       this.camera.position.x = 0;
@@ -99,16 +109,16 @@ export class ThreedSceneComponent implements OnInit, AfterViewInit, OnChanges, O
         loader.load('/assets/CubieWithColors.fbx', (fbx) => {
             fbx.children.forEach(child => {
               if(child instanceof THREE.Mesh) {
-                this.rubiks = new Rubiks(child, new GenericMoveCodeToRotationBindingsInitializer(), 2);
+                this.rubiks = new Rubiks(child, new GenericMoveCodeToRotationBindingsInitializer(), 3);
                 this.rubiks.addToScene(this.scene);
-                this.animateObjects.push(this.rubiks);
+                //this.animateObjects.push(this.rubiks);
               }
             });
 
             this.ngZone.runOutsideAngular(() => {
               this.renderer.setAnimationLoop(() => {
                 // render a frame
-                this.animateObjects.forEach((animateObject) => animateObject.doAnimationFrame());
+                //this.animateObjects.forEach((animateObject) => animateObject.doAnimationFrame());
                 this.renderer.render(this.scene, this.camera);
               });
             });
