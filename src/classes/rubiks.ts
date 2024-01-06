@@ -3,8 +3,7 @@ import * as TWEEN from '@tweenjs/tween.js'
 import { Move } from '../classes/move';
 import { IMoveCodeToRotationBindingsInitializer, ThreeByThreeMoveCodeToRotationBindingsInitializer } from './moveRotationInitializer';
 import { ISolvable, CubieState } from './solver';
-import { ThreedSceneComponent } from '../app/threed-scene/threed-scene.component';
-import { vector3ToString, stringToVector3 } from './threeUtils';
+import { vector3ToString } from './threeUtils';
 import { Key } from 'ts-keycode-enum';
 
 import { Queue } from 'queue-typescript';
@@ -195,16 +194,20 @@ export class Rubiks implements ISolvable, IMovable {
 
       this.scene.add(group);
 
-
-      let rotationQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle);
-      rotationQuaternion.normalize();
       // animate turning
-      new TWEEN.Tween(group.quaternion)
-      .to(rotationQuaternion, animationDelayMs)
-      .onUpdate((quaternion) => {
-        group.quaternion.set(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+
+      var time = {t:0};
+      let targetQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+      targetQuaternion.normalize();
+
+      new TWEEN.Tween(time)
+      .to({t:1}, animationDelayMs)
+      .onUpdate(() => {
+        group.quaternion.slerp(targetQuaternion, time.t);
       })
       .onComplete(() => {
+        group.quaternion.copy(targetQuaternion);
+
         let tempQuaternion = new THREE.Quaternion();
         let tempPosition = new THREE.Vector3();
         this.cubieIndicesInRotatingSlice.forEach((instanceIndex) => {
